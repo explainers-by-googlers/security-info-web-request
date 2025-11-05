@@ -1,24 +1,10 @@
-# Explainer for the TODO API
+# Explainer for the WebRequest.SecurityInfo API
 
-**Instructions for the explainer author: Search for "todo" in this repository and update all the
-instances as appropriate. For the instances in `index.bs`, update the repository name, but you can
-leave the rest until you start the specification. Then delete the TODOs and this block of text.**
-
-This proposal is an early design sketch by [TODO: team] to describe the problem below and solicit
+This proposal is an early design sketch by Isolated Web Apps team to describe the problem below and solicit
 feedback on the proposed solution. It has not been approved to ship in Chrome.
 
-TODO: Fill in the whole explainer template below using https://tag.w3.org/explainers/ as a
-reference. Look for [brackets].
-
-## Proponents
-
-- [Proponent team 1]
-- [Proponent team 2]
-- [etc.]
-
 ## Participate
-- https://github.com/explainers-by-googlers/[your-repository-name]/issues
-- [Discussion forum]
+- https://github.com/explainers-by-googlers/security-info-web-request/issues
 
 ## Table of Contents [if the explainer is longer than one printed page]
 
@@ -27,159 +13,255 @@ reference. Look for [brackets].
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Introduction](#introduction)
+- [Scope](#scope)
 - [Goals](#goals)
 - [Non-goals](#non-goals)
-- [User research](#user-research)
 - [Use cases](#use-cases)
-  - [Use case 1](#use-case-1)
-  - [Use case 2](#use-case-2)
-- [[Potential Solution]](#potential-solution)
+  - [Use case 1: Secure custom protocol for a server](#use-case-1-secure-custom-protocol-for-a-server)
+- [Potential Solution](#potential-solution)
+  - [Example usage for https](#example-usage-for-https)
+  - [Example usage for web sockets](#example-usage-for-web-sockets)
+  - [API Definitions](#api-definitions)
   - [How this solution would solve the use cases](#how-this-solution-would-solve-the-use-cases)
-    - [Use case 1](#use-case-1-1)
-    - [Use case 2](#use-case-2-1)
+    - [Use case 1](#use-case-1)
 - [Detailed design discussion](#detailed-design-discussion)
-  - [[Tricky design choice #1]](#tricky-design-choice-1)
-  - [[Tricky design choice 2]](#tricky-design-choice-2)
+  - [Why attach `SecurityInfo` to the `onHeadersReceived` event?](#why-attach-securityinfo-to-the-onheadersreceived-event)
+  - [Why require `securityInfo` and `securityInfoRawDer` options?](#why-require-securityinfo-and-securityinforawder-options)
 - [Considered alternatives](#considered-alternatives)
-  - [[Alternative 1]](#alternative-1)
-  - [[Alternative 2]](#alternative-2)
+  - [A new `verifyTLSServerCertificate` API for IWAs](#a-new-verifytlsservercertificate-api-for-iwas)
+  - [Bundling root certificates with the app](#bundling-root-certificates-with-the-app)
+  - [Modifying the `fetch` API](#modifying-the-fetch-api)
 - [Security and Privacy Considerations](#security-and-privacy-considerations)
-- [Stakeholder Feedback / Opposition](#stakeholder-feedback--opposition)
-- [References & acknowledgements](#references--acknowledgements)
+- [Compatibility with Extensions API](#compatibility-with-extensions-api)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 ## Introduction
 
-[The "executive summary" or "abstract".
-Explain in a few sentences what the goals of the project are,
-and a brief overview of how the solution works.
-This should be no more than 1-2 paragraphs.]
+Web apps sometimes need to establish secure raw TCP/UDP connections (e.g., via Direct Sockets) for custom protocols, often to support legacy servers that cannot be updated to modern alternatives like WebTransport. Unlike standard HTTPS, these raw sockets don't have a built-in mechanism to verify the server's TLS certificate against a trusted root store.
+
+This proposal introduces a `WebRequest.SecurityInfo` API for `ControlledFrame`. It allows a web app to intercept an HTTPS, WSS or WebTransport request to a server, retrieve the server's certificate fingerprint (as verified by the browser), and then use that fingerprint to manually verify the certificate of a separate raw TCP/UDP connection to the same server. This provides a simple way for the app to confirm it's talking to the correct server.
+
+## Scope
+
+[Isolated Context](https://wicg.github.io/isolated-web-apps/isolated-contexts.html) only.
 
 ## Goals
 
-[What is the **end-user need** which this project aims to address? Make this section short, and
-elaborate in the Use cases section.]
+Enable web apps to verify the trustworthiness of a server's (D)TLS certificate when establishing raw TCP/UDP connections via APIs like Direct Sockets. This allows apps using custom (non web) protocols to ensure they are communicating with the correct, browser-trusted server, preventing man-in-the-middle (MITM) attacks.
 
 ## Non-goals
 
-[If there are "adjacent" goals which may appear to be in scope but aren't,
-enumerate them here. This section may be fleshed out as your design progresses and you encounter necessary technical and other trade-offs.]
+* This API does **not** provide a general-purpose mechanism for web apps to verify arbitrary certificates against the browser's or OS's root store. The verification is limited to "pinning" a certificate fingerprint from a concurrent browser-verified connection.
+* This API does **not** directly add (D)TLS capabilities to Direct Sockets. The app is still responsible for implementing the (D)TLS handshake (e.g., via a WASM-based library like OpenSSL).
 
-## User research
-
-[If any user research has been conducted to inform your design choices,
-discuss the process and findings. User research should be more common than it is.]
 
 ## Use cases
 
-[Describe in detail what problems end-users are facing, which this project is trying to solve. A
-common mistake in this section is to take a web developer's or server operator's perspective, which
-makes reviewers worry that the proposal will violate [RFC 8890, The Internet is for End
-Users](https://www.rfc-editor.org/rfc/rfc8890).]
+### Use case 1: Secure custom protocol for a server
+A web app needs to communicate with a server that uses a custom protocol over raw TCP. This server cannot be updated to use a modern, secure-by-default protocol like WebTransport. The web app bundles a (D)TLS library (compiled to WASM) to secure the connection using Direct Sockets. To prevent MITM attacks, the web app needs to verify that the server's (D)TLS certificate is the one it trusts. The server *also* serves a simple HTTPS status page from the same domain, using the same certificate. The web app needs a way to get the certificate details from the HTTPS connection to verify the TCP connection.
+One of the reasons, why the server might need UDP is for better streaming performance, which is not possible to achieve via usual TCP.
 
-### Use case 1
+## Potential Solution
 
-### Use case 2
+We propose extending the `ControlledFrame` `webRequest` API, which is available in Isolated Context. Specifically, we will add a new `securityInfo` field to the event object of the `onHeadersReceived` listener.
 
-<!-- In your initial explainer, you shouldn't be attached or appear attached to any of the potential
-solutions you describe below this. -->
+A web app will opt-in to receiving this information by setting a new flag in the `createWebRequestInterceptor` options.
 
-## [Potential Solution]
+### Example usage for https
 
-[For each related element of the proposed solution - be it an additional JS method, a new object, a new element, a new concept etc., create a section which briefly describes it.]
+```javascript
+// Global variable to a trusted certificate to be used later.
+var trustedCert = undefined;
 
-```js
-// Provide example code - not IDL - demonstrating the design of the feature.
+// html page must have <controlledframe id="cf">.
+// src can be set as "about:blank".
+var cf = document.getElementById('cf');
 
-// If this API can be used on its own to address a user need,
-// link it back to one of the scenarios in the goals section.
+// Set up https fetch interceptor.
+const interceptor = cf.request.createWebRequestInterceptor({
+    urlPatterns: ["*://*/*"],
+    resourceTypes: ["xmlhttprequest"],
+    securityInfoRawDer: true
+});
 
-// If you need to show how to get the feature set up
-// (initialized, or using permissions, etc.), include that too.
+// Save trusted certificate from intercepted request.
+interceptor.addEventListener('headersreceived', (e) => {
+    let securityInfo = e.securityInfo;
+
+    if (securityInfo && securityInfo.state == "secure") {
+        trustedCert = securityInfo.certificates[0].rawDER;
+        console.log('obtained trusted certificate bytes' + trustedCert);
+    }
+});
+
+// Execute https request.
+cf.executeScript({
+    code: `fetch('https://simple-push-demo.vercel.app/');`
+});
 ```
 
-[Where necessary, provide links to longer explanations of the relevant pre-existing concepts and API.
-If there is no suitable external documentation, you might like to provide supplementary information as an appendix in this document, and provide an internal link where appropriate.]
+### Example usage for web sockets
 
-[If this is already specced, link to the relevant section of the spec.]
+```javascript
+// Global variable to a trusted certificate to be used later.
+var trustedCert = undefined;
 
-[If spec work is in progress, link to the PR or draft of the spec.]
+// html page must have <controlledframe id="cf">.
+// src can be set as "about:blank".
+var cf = document.getElementById('cf');
 
-[If you have more potential solutions in mind, add ## Potential Solution 2, 3, etc. sections.]
+// Set up wss fetch interceptor.
+const interceptor = cf.request.createWebRequestInterceptor({
+    // The urlPattern: ["*://*/*"] works for wss scheme only
+    // from 142 version of Chrome.
+    urlPatterns: ["wss://*/*"],
+    resourceTypes: ["websocket"],
+    securityInfoRawDer: true
+});
+
+// Save trusted certificate from intercepted request.
+interceptor.addEventListener('headersreceived', (e) => {
+    let securityInfo = e.securityInfo;
+
+    if (securityInfo && securityInfo.state == "secure") {
+        trustedCert = securityInfo.certificates[0].rawDER;
+        console.log('obtained trusted certificate' + trustedCert);
+    }
+});
+
+// Execute wss request.
+cf.executeScript({
+    code: `
+        console.log('web socket is started.');
+        const socket = new WebSocket('wss://echo.websocket.org/');
+        
+        socket.onopen = (event) => {
+          console.log('✅ WebSocket connection established.');
+          
+          socket.close();
+        };
+      `
+});
+```
+
+### API Definitions
+
+The `securityInfo` object will be added to the `WebRequestHeadersReceivedEvent`:
+
+```java
+[Exposed=Window, IsolatedContext]
+interface WebRequestHeadersReceivedEvent : WebRequestEvent {
+  readonly attribute WebRequestResponse response;
+  // New field.
+  readonly attribute SecurityInfo? securityInfo;
+};
+```
+The new dictionaries are defined as follows, closely matching the [Firefox extensions API](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/webRequest/SecurityInfo) for compatibility:
+
+```java
+[Exposed=Window, IsolatedContext]
+dictionary SecurityInfo {
+  required sequence<CertificateInfo> certificates;
+  required ConnectionState state;
+};
+[Exposed=Window, IsolatedContext]
+enum ConnectionState {
+  "broken", "insecure", "secure" 
+};
+[Exposed=Window, IsolatedContext]
+dictionary Fingerprint { 
+  required DOMString sha256; 
+};
+
+[Exposed=Window, IsolatedContext]
+dictionary CertificateInfo {
+  required Fingerprint fingerprint;
+  binary rawDER;
+};
+```
+
+And the new options for `createWebRequestInterceptor`:
+
+```java
+dictionary WebRequestInterceptorOptions {
+  // ... existing options
+  boolean securityInfo = false; 
+  boolean securityInfoRawDer = false; 
+};
+```
+
+* New `onHeadersReceivedOptions` are necessary for performance reasons. They specify whether ssl data must be kept for as long as the web request is alive. Without them, unnecessary data can be kept for longer. Which is very undesirable especially in post quantum cryptography, since certificates can take a significant amount of memory space. 
+
+* A new `securityInfo` object can be obtained in the `onHeadersReceived` event listener.
+
+* To receive this information, a web app **must** include `"securityInfo=true"` or `"securityInfoRawDer=true"` when calling `createWebRequestInterceptor`. This opt-in design prevents performance overhead for the majority of extensions that don't need this data.
+
+* The `securityInfo` object will only be populated for requests made over a secure protocol (e.g., HTTPS, WSS) where the TLS/QUIC handshake has successfully completed or also in case of certificate errors.
+Browsers interrupt connections when there's a certificate error, unless user has explicitely allowed it in the browser UI, only in this case it is possible to have SecurityInfo with `state = "broken"`.
+
+* `certificates` - will contain only the leaf server certificate. This is done for future extensibility and Firefox API compatibility, because Firefox API provides a leaf if [certificateChain](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/webRequest/getSecurityInfo#certificatechain) is not included in getSecurityInfo options.
+
+* `state` - State of the connection. One of:
+    * `"broken"`: the TLS handshake failed (for example, the certificate has expired)
+    * `"insecure"`: the connection is not a TLS connection
+    * `"secure"`: the connection is a secure TLS connection
+    * Note that Firefox extension API has a `“weak”` state of connection, which does not exist in Chrome.
+
+* The `CertificateInfo.rawDER` field contains the raw certificate bytes in DER format, which can be parsed by the extension using a third-party library. This field is only provided if `WebRequestInterceptorOptions` includes `securityInfoRawDer=true`. The reason for it is a performance optimization to not pass raw bytes when it is not necessary, and compatibility with Firefox extensions API.
+
 
 ### How this solution would solve the use cases
 
-[If there are a suite of interacting APIs, show how they work together to solve the use cases described.]
-
 #### Use case 1
-
-[Description of the end-user scenario]
-
-```js
-// Sample code demonstrating how to use these APIs to address that scenario.
-```
-
-#### Use case 2
-
-[etc.]
+The solution described in the code example above directly addresses the use case. A web app would:
+1.  Use `<controlledframe>` to make a standard `fetch` (HTTPS) or `WebSocket` (WSS) connection to its server.
+2.  Register a `webRequest` interceptor with `securityInfo: true` or `securityInfoRawDer: true`.
+3.  In the `onHeadersReceived` listener, capture the `securityInfo.certificates[0].fingerprint.sha256` or `rawDER` from the browser-verified `secure` connection.
+4.  Initiate its raw TCP/UDP connection via Direct Sockets.
+5.  Perform its own (D)TLS handshake using a WASM-based library.
+6.  During the handshake's certificate verification step, the app compares the fingerprint or full certificate provided by the server against the trusted data captured in step 3.
+7.  If they match, the app trusts the connection. If not, it aborts.
 
 ## Detailed design discussion
 
-### [Tricky design choice #1]
+### Why attach `SecurityInfo` to the `onHeadersReceived` event?
+An alternative, seen in Firefox's API, is a separate asynchronous function like `getSecurityInfo(requestId)`. We chose to attach the data to the `onHeadersReceived` event for compatibility with Chrome's non-blocking event-driven architecture (Manifest V3, which the extension version is based on).
 
-[Talk through the tradeoffs in coming to the specific design point you want to make.]
+In a non-blocking model, the internal network and certificate data associated with a request is often discarded immediately after the request pipeline advances. An asynchronous `getSecurityInfo()` call would be racy and unreliable. By requiring an opt-in (`securityInfo: true`) *before* the request, the browser knows to hold onto this data just long enough to deliver it with the `onHeadersReceived` event, ensuring data availability without blocking.
 
-```js
-// Illustrated with example code.
-```
+### Why require `securityInfo` and `securityInfoRawDer` options?
+We introduced two separate boolean flags, `securityInfo` and `securityInfoRawDer`, to minimize performance overhead.
 
-[This may be an open question,
-in which case you should link to any active discussion threads.]
-
-### [Tricky design choice 2]
-
-[etc.]
+1.  **`securityInfo`**: Calculating and retaining certificate information (even just a fingerprint) for every request would add overhead. This flag ensures we only do this work for interceptors that actually need the data.
+2.  **`securityInfoRawDer`**: Providing the raw DER-encoded certificate bytes (`rawDER`) is a further optimization. Many use cases (like fingerprint pinning) only need the `sha256` hash, which is small. Passing the full certificate bytes (which can be large, especially with post-quantum cryptography) is unnecessary unless the app explicitly requests it for parsing. This aligns with compatibility goals with the Firefox API.
 
 ## Considered alternatives
 
-[This should include as many alternatives as you can,
-from high level architectural decisions down to alternative naming choices.]
+### A new `verifyTLSServerCertificate` API for IWAs
+We considered adding a new API, similar to deprecated extension APIs, that would verify a certificate against the browser's root store. However, this was rejected as it would mean using the Web PKI's Chrome Root Store (CRS) for non-web protocols, which is against security policy. The CRS is intended only for certs used for HTTPS, and using it for other protocols could slow the evolution of Web PKI security practices.
 
-### [Alternative 1]
+### Bundling root certificates with the app
+The app could bundle its own set of trusted root CAs. This has significant drawbacks:
+* **Maintenance:** The app developer is now responsible for tracking and updating the root store, which is a significant maintenance burden.
+* **Revocation:** The app would have no way to perform revocation checks.
+* **Restrictive Environments:** Apps in highly restricted firewall configurations might not be able to connect to external endpoints to update their bundled root store.
 
-[Describe an alternative which was considered,
-and why you decided against it.]
-
-### [Alternative 2]
-
-[etc.]
+### Modifying the `fetch` API
+We considered adding certificate access to the standard `fetch` API. This was deemed undesirable because `fetch` is a very general-purpose API available to the entire web. This `WebRequest.SecurityInfo` feature is for the niche, high-privilege use case of Isolated Web Apps, and the `ControlledFrame` `webRequest` API is the appropriate, isolated surface for it. Furthermore, `fetch` only works for HTTPS, whereas `webRequest` also covers WebSockets (WSS) and WebTransport.
 
 ## Security and Privacy Considerations
 
-[Describe any interesting answers you give to the [Security and Privacy Self-Review
-Questionnaire](https://www.w3.org/TR/security-privacy-questionnaire/) and any interesting ways that
-your feature interacts with [Chromium's Web Platform Security
-Guidelines](https://chromium.googlesource.com/chromium/src/+/master/docs/security/web-platform-security-guidelines.md).]
+This API exposes the server's leaf certificate and fingerprint to the web app. This is not considered a new security or privacy risk.
 
-## Stakeholder Feedback / Opposition
+A web app with Isolated Context and the `direct-sockets` permission can already open a raw TCP connection to any server, perform a (D)TLS handshake using a WASM library, and retrieve the *exact same* server certificate.
 
-[Implementors and other stakeholders may already have publicly stated positions on this work. If you can, list them here with links to evidence as appropriate.]
+This proposal simply makes the process more reliable by allowing the app to get the *browser-verified* certificate information, rather than one from a separate, (potentially) different connection. It does not expose any new information that a privileged web app couldn't already obtain. The API is restricted to the "IsolatedContext" and is not available to the general web.
 
-- [Implementor A] : Positive
-- [Stakeholder B] : No signals
-- [Implementor C] : Negative
+## Compatibility with Extensions API
 
-[If appropriate, explain the reasons given by other implementors for their concerns.]
+`WebRequest.SecurityInfo` will also be implemented for [Extensions API in Chrome](https://github.com/w3c/webextensions/pull/899), whereas in Firefox it [already exists](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/webRequest/getSecurityInfo).
+The reason for keeping Extension API aligned with Isolated Context Web API:
 
-## References & acknowledgements
-
-[Your design will change and be informed by many people; acknowledge them in an ongoing way! It helps build community and, as we only get by through the contributions of many, is only fair.]
-
-[Unless you have a specific reason not to, these should be in alphabetical order.]
-
-Many thanks for valuable feedback and advice from:
-
-- [Person 1]
-- [Person 2]
-- [etc.]
+* To reduce maintenance burden, since internally the same code is responsible for both API's.
+* To simplify life of web developers and allow them easily reuse knowledge or code of WebRequest API in different contexts.
