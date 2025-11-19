@@ -61,7 +61,7 @@ One of the reasons, why the server might need UDP is for better streaming perfor
 
 ## Potential Solution
 
-We propose extending the [`ControlledFrame` `WebRequest`](https://wicg.github.io/controlled-frame/#api-web-request) API, which is available in Isolated Context. Specifically, we will add a new `securityInfo` field to the event object of the [`onHeadersReceived`](https://wicg.github.io/controlled-frame/#webrequestheadersreceivedevent) listener.
+We propose extending the `<controlledframe>` [`WebRequest`](https://wicg.github.io/controlled-frame/#api-web-request) API, which is available in Isolated Context. Specifically, we will add a new `securityInfo` field to the event object of the [`onHeadersReceived`](https://wicg.github.io/controlled-frame/#webrequestheadersreceivedevent) listener.
 
 A web app will opt-in to receiving this information by setting true new dictionary members in the [`createWebRequestInterceptor`](https://wicg.github.io/controlled-frame/#dom-webrequest-createwebrequestinterceptor) options.
 
