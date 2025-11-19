@@ -44,7 +44,7 @@ This proposal introduces a `WebRequest SecurityInfo` API for [`ControlledFrame`]
 
 ## Goals
 
-Enable web apps to verify the trustworthiness of a server's (D)TLS certificate when establishing raw TCP/UDP connections via APIs like [Direct Sockets](https://wicg.github.io/direct-sockets/). This allows apps using custom (non web) protocols to ensure they are communicating with the correct, browser-trusted server, preventing man-in-the-middle (MITM) attacks.
+Enable isolated web apps to verify the trustworthiness of a server's (D)TLS certificate when establishing raw TCP/UDP connections via APIs like [Direct Sockets](https://wicg.github.io/direct-sockets/). This allows apps using custom (non web) protocols to ensure they are communicating with the correct, browser-trusted server, preventing man-in-the-middle (MITM) attacks.
 Only in [Isolated Context](https://wicg.github.io/isolated-web-apps/isolated-contexts.html).
 
 ## Non-goals
