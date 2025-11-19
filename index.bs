@@ -1,12 +1,12 @@
 <pre class='metadata'>
-Title: The TODO API
-Shortname: todo
+Title: The WebRequest.SecurityInfo API
+Shortname: WebRequest.SecurityInfo
 Level: None
 Status: w3c/UD
-Repository: explainers-by-googlers/todo-your-repo-name
-URL: https://explainers-by-googlers.github.io/todo-your-repo-name
-Editor: TODO: Your Name, Google https://google.com, TODO@google.com
-Abstract: TODO: A short description of your spec, one or two sentences.
+Repository: explainers-by-googlers/security-info-web-request
+URL: https://explainers-by-googlers.github.io/security-info-web-request
+Editor: Vlad Krot, Google https://google.com, vkrot@google.com
+Abstract: An API proposal to extend the `webRequest` API to provide TLS/QUIC certificate information and connection state for a given request.
 Markup Shorthands: markdown yes, css no
 Complain About: accidental-2119 yes, missing-example-ids yes
 Assume Explicit For: yes
