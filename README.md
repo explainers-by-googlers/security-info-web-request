@@ -267,4 +267,4 @@ This proposal simply makes the process more reliable by allowing the app to get 
 The reason for keeping Extension API aligned with Isolated Context Web API:
 
 * To reduce maintenance burden, since internally the same code is responsible for both API.
-* To simplify life of web developers and allow them easily reuse knowledge or code of WebRequest API in different contexts.
+* Developer ergonomics: authors can easily reuse the API in different contexts, without having to learn an entirely new one.
