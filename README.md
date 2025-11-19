@@ -266,5 +266,5 @@ This proposal simply makes the process more reliable by allowing the app to get 
 `WebRequest SecurityInfo` will also be implemented for [Extensions API in Chrome](https://github.com/w3c/webextensions/pull/899), whereas in Firefox it [already exists](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/webRequest/getSecurityInfo).
 The reason for keeping Extension API aligned with Isolated Context Web API:
 
-* To reduce maintenance burden, since internally the same code is responsible for both API's.
+* To reduce maintenance burden, since internally the same code is responsible for both API.
 * To simplify life of web developers and allow them easily reuse knowledge or code of WebRequest API in different contexts.
