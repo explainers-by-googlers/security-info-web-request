@@ -259,7 +259,7 @@ This API exposes the server's leaf certificate and fingerprint to the web app. T
 
 A web app with Isolated Context and the `direct-sockets` permission can already open a raw TCP connection to any server, perform a (D)TLS handshake using a WASM library, and retrieve the *exact same* server certificate.
 
-This proposal simply makes the process more reliable by allowing the app to get the *browser-verified* certificate information, rather than one from a separate, (potentially) different connection. It does not expose any new information that a privileged web app couldn't already obtain. The API is restricted to the `IsolatedContext` and is not available to the general web.
+This proposal simply makes the process more reliable by allowing the app to get the *browser-verified* certificate information, rather than one from a separate, (potentially) different connection. It does not expose any new information that a privileged web app couldn't already obtain. The API is restricted to `IsolatedContext` environments and is not available to the general web.
 
 ## Compatibility with Extensions API
 
