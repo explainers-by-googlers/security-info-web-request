@@ -146,7 +146,7 @@ cf.executeScript({
 
 The `securityInfo` object will be added to the `WebRequestHeadersReceivedEvent`:
 
-```java
+```javascript
 [Exposed=Window, IsolatedContext]
 interface WebRequestHeadersReceivedEvent : WebRequestEvent {
   readonly attribute WebRequestResponse response;
@@ -156,7 +156,7 @@ interface WebRequestHeadersReceivedEvent : WebRequestEvent {
 ```
 The new dictionaries are defined as follows, closely matching the [Firefox extensions API](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/API/webRequest/SecurityInfo) for compatibility:
 
-```java
+```javascript
 [Exposed=Window, IsolatedContext]
 dictionary SecurityInfo {
   required sequence<CertificateInfo> certificates;
@@ -181,7 +181,7 @@ dictionary CertificateInfo {
 
 And the new options for `createWebRequestInterceptor`:
 
-```java
+```javascript
 dictionary WebRequestInterceptorOptions {
   // ... existing options
   boolean securityInfo = false; 
