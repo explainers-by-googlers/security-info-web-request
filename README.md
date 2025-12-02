@@ -13,7 +13,6 @@ feedback on the proposed solution. It has not been approved to ship in Chrome.
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 - [Introduction](#introduction)
-- [Scope](#scope)
 - [Goals](#goals)
 - [Non-goals](#non-goals)
 - [Use cases](#use-cases)
@@ -31,6 +30,7 @@ feedback on the proposed solution. It has not been approved to ship in Chrome.
   - [A new `verifyTLSServerCertificate` API for IWAs](#a-new-verifytlsservercertificate-api-for-iwas)
   - [Bundling root certificates with the app](#bundling-root-certificates-with-the-app)
   - [Modifying the `fetch` API](#modifying-the-fetch-api)
+  - [Porting Firefox Extensions API `getSecurityInfo`](#porting-firefox-extensions-api-getsecurityinfo)
 - [Security and Privacy Considerations](#security-and-privacy-considerations)
 - [Compatibility with Extensions API](#compatibility-with-extensions-api)
 
